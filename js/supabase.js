@@ -215,3 +215,47 @@ function mostrarToast(msg, tipo) {
   clearTimeout(window._toastTimer);
   window._toastTimer = setTimeout(() => toast.classList.remove('show'), 3500);
 }
+
+// ── SINCRONIZACIÓN MANUAL (botón "Guardar todo") ──────────────────────────────
+async function sincronizarTodo() {
+  const uid = window.currentUser?.id;
+  if (!uid || window.currentUser?.rol !== 'tramador') return;
+
+  const btn = document.getElementById('btn-sincronizar');
+  const iconEl = btn?.querySelector('i');
+  if (btn) { btn.disabled = true; if (iconEl) iconEl.className = 'ti ti-loader-2'; }
+  mostrarToast('Guardando en Supabase…', 'ok');
+
+  // recolectar todo desde localStorage
+  const keys = [
+    { ls: 'tramas_estados_v6',   label: 'estados' },
+    { ls: 'tramas_hist_v6',      label: 'historial' },
+    { ls: 'tramas_asign_v6',     label: 'asignaciones' },
+    { ls: 'tramas_exsl_v6',      label: 'sin lote' },
+    { ls: 'tramas_notas_v1',     label: 'notas' },
+  ];
+
+  let ok = 0, fail = 0;
+  for (const { ls } of keys) {
+    const raw = localStorage.getItem(ls);
+    if (!raw) continue;
+    try {
+      const data = JSON.parse(raw);
+      const res = await fetch(`${SB_URL}/rest/v1/${SB_TABLE}`, {
+        method: 'POST',
+        headers: sbHeaders({ 'Prefer': 'resolution=merge-duplicates' }),
+        body: JSON.stringify({ key: ls, data, user_id: uid, updated_at: new Date().toISOString() })
+      });
+      if (res.ok) ok++; else fail++;
+    } catch (e) { fail++; }
+  }
+
+  if (btn) { btn.disabled = false; if (iconEl) iconEl.className = 'ti ti-cloud-upload'; }
+  if (fail === 0) {
+    showSyncStatus(true);
+    mostrarToast(`✓ ${ok} claves guardadas en Supabase`, 'ok');
+  } else {
+    showSyncStatus(false);
+    mostrarToast(`${ok} OK · ${fail} fallaron — reintenta`, 'err');
+  }
+}
