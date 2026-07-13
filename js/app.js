@@ -49,7 +49,7 @@ function lsGet(k, def) {
 function lsSet(k, v) {
   localStorage.setItem(k, JSON.stringify(v));
   // guardar en Supabase en background (solo tramador)
-  if (typeof sbGuardar === 'function' && currentUser?.rol === 'tramador') {
+  if (typeof sbGuardar === 'function' && window.currentUser?.rol === 'tramador') {
     sbGuardar(k, v);
   }
 }
@@ -243,7 +243,7 @@ function procesarArchivo(buffer,nombre){
     const recup=lotes.filter(l=>estados[l.key]?.estado!=='— sin estado —').length;
     showToast('toast-main','toast-msg',`${lotes.length} lotes · ${facturasSinLote.length} sin lote · ${recup} estados recuperados`,'ok');
     // guardar excel en supabase si es tramador
-    if (typeof sbGuardarExcel === 'function' && currentUser?.rol === 'tramador') {
+    if (typeof sbGuardarExcel === 'function' && window.currentUser?.rol === 'tramador') {
       const b64 = btoa(String.fromCharCode(...new Uint8Array(buffer)));
       sbGuardarExcel(nombre, b64);
     }
@@ -1126,7 +1126,7 @@ window.__csjbInit = async function() {
   // intentar restaurar sesión
   const restored = await sbRestoreSession();
   if (restored) {
-    await iniciarSesionUsuario(currentUser);
+    await iniciarSesionUsuario(window.currentUser);
   }
 };
 
