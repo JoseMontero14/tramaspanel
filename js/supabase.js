@@ -3,10 +3,10 @@ const SB_URL = 'https://msyqmiijojmtimvyyoft.supabase.co';
 const SB_KEY = 'sb_publishable_U9pQbmKoIyIONc4WR9ZcQw_LN8tY8zS';
 const SB_TABLE = 'panel_data';
 
-// Estado de sesión global (en window para compartir con app.js)
-let sbSession        = null;
-let jefeTargetUserId = null;
+// Estado de sesión global en window para compartir entre supabase.js y app.js
+window.sbSession     = null;
 window.currentUser   = null;
+let jefeTargetUserId = null;
 
 const TRAMADORES = {
   'jtmontero@tramaspanel.com':  { id: 'c7ffabc0-5bde-4149-8a1c-85dcb3e999a1', nombre: 'José' },
@@ -17,7 +17,7 @@ const TRAMADORES = {
 function sbHeaders(extra = {}) {
   return {
     'apikey': SB_KEY,
-    'Authorization': 'Bearer ' + (sbSession || SB_KEY),
+    'Authorization': 'Bearer ' + (window.sbSession || SB_KEY),
     'Content-Type': 'application/json',
     ...extra
   };
@@ -44,7 +44,7 @@ async function sbLogin(email, password) {
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error_description || data.msg || 'Credenciales incorrectas');
-  sbSession = data.access_token;
+  window.sbSession = data.access_token;
   // cargar perfil
   const profRes = await fetch(`${SB_URL}/rest/v1/user_profiles?id=eq.${data.user.id}&select=*&limit=1`, {
     headers: sbHeaders()
@@ -52,7 +52,7 @@ async function sbLogin(email, password) {
   const profData = await profRes.json();
   if (!profData.length) throw new Error('Usuario sin perfil. Contacta al administrador.');
   window.currentUser = { id: data.user.id, email: data.user.email, ...profData[0] };
-  sessionStorage.setItem('sb_session', sbSession);
+  sessionStorage.setItem('sb_session', window.sbSession);
   sessionStorage.setItem('sb_user', JSON.stringify(window.currentUser));
   return window.currentUser;
 }
@@ -66,33 +66,41 @@ async function sbRestoreSession() {
       headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + tok }
     });
     if (!res.ok) { sbLogout(false); return false; }
-    sbSession  = tok;
+    window.sbSession = tok;
     window.currentUser = JSON.parse(usr);
     return true;
   } catch (e) { return false; }
 }
 
 function sbLogout(reload = true) {
-  sbSession = null; window.currentUser = null; jefeTargetUserId = null;
+  window.sbSession = null; window.currentUser = null; jefeTargetUserId = null;
   sessionStorage.clear();
   if (reload) location.reload();
 }
 
 // ── PANEL DATA ────────────────────────────────────────────────────────────────
 async function sbGuardar(key, value) {
-  const uid = targetUserId();
-  if (!uid) return;
+  // solo guardar si hay sesión activa de tramador
+  const uid = window.currentUser?.id;
+  if (!uid || !window.sbSession) return;
+  if (window.currentUser?.rol !== 'tramador') return;
   try {
     const res = await fetch(`${SB_URL}/rest/v1/${SB_TABLE}`, {
       method: 'POST',
       headers: sbHeaders({ 'Prefer': 'resolution=merge-duplicates' }),
       body: JSON.stringify({ key, data: value, user_id: uid, updated_at: new Date().toISOString() })
     });
-    if (!res.ok) throw new Error('Error ' + res.status);
-    showSyncStatus(true);
+    if (!res.ok) {
+      const txt = await res.text();
+      showSyncStatus(false);
+      mostrarToast('Error al guardar: ' + res.status, 'err');
+      console.warn('sbGuardar error:', txt);
+    } else {
+      showSyncStatus(true);
+    }
   } catch (e) {
     showSyncStatus(false);
-    console.warn('sbGuardar error:', e.message);
+    mostrarToast('Sin conexión con Supabase', 'err');
   }
 }
 
