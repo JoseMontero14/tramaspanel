@@ -48,8 +48,8 @@ function lsGet(k, def) {
 }
 function lsSet(k, v) {
   localStorage.setItem(k, JSON.stringify(v));
-  // guardar en Supabase en background (solo tramador)
-  if (typeof sbGuardar === 'function' && window.currentUser?.rol === 'tramador') {
+  // guardar en Supabase en background
+  if (typeof sbGuardar === 'function') {
     sbGuardar(k, v);
   }
 }
