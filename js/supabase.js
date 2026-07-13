@@ -3,10 +3,10 @@ const SB_URL = 'https://msyqmiijojmtimvyyoft.supabase.co';
 const SB_KEY = 'sb_publishable_U9pQbmKoIyIONc4WR9ZcQw_LN8tY8zS';
 const SB_TABLE = 'panel_data';
 
-// Estado de sesión global
-let sbSession  = null;
-let currentUser = null;
+// Estado de sesión global (en window para compartir con app.js)
+let sbSession        = null;
 let jefeTargetUserId = null;
+window.currentUser   = null;
 
 const TRAMADORES = {
   'jtmontero@tramaspanel.com':  { id: 'c7ffabc0-5bde-4149-8a1c-85dcb3e999a1', nombre: 'José' },
@@ -24,8 +24,8 @@ function sbHeaders(extra = {}) {
 }
 
 function targetUserId() {
-  if (currentUser?.rol === 'jefe' && jefeTargetUserId) return jefeTargetUserId;
-  return currentUser?.id || null;
+  if (window.currentUser?.rol === 'jefe' && jefeTargetUserId) return jefeTargetUserId;
+  return window.currentUser?.id || null;
 }
 
 function showSyncStatus(ok) {
@@ -51,10 +51,10 @@ async function sbLogin(email, password) {
   });
   const profData = await profRes.json();
   if (!profData.length) throw new Error('Usuario sin perfil. Contacta al administrador.');
-  currentUser = { id: data.user.id, email: data.user.email, ...profData[0] };
+  window.currentUser = { id: data.user.id, email: data.user.email, ...profData[0] };
   sessionStorage.setItem('sb_session', sbSession);
-  sessionStorage.setItem('sb_user', JSON.stringify(currentUser));
-  return currentUser;
+  sessionStorage.setItem('sb_user', JSON.stringify(window.currentUser));
+  return window.currentUser;
 }
 
 async function sbRestoreSession() {
@@ -67,13 +67,13 @@ async function sbRestoreSession() {
     });
     if (!res.ok) { sbLogout(false); return false; }
     sbSession  = tok;
-    currentUser = JSON.parse(usr);
+    window.currentUser = JSON.parse(usr);
     return true;
   } catch (e) { return false; }
 }
 
 function sbLogout(reload = true) {
-  sbSession = null; currentUser = null; jefeTargetUserId = null;
+  sbSession = null; window.currentUser = null; jefeTargetUserId = null;
   sessionStorage.clear();
   if (reload) location.reload();
 }
@@ -116,7 +116,7 @@ async function sbCargarTodo(uid) {
 
 // ── EXCEL ─────────────────────────────────────────────────────────────────────
 async function sbGuardarExcel(nombre, base64data) {
-  const uid = currentUser?.id;
+  const uid = window.currentUser?.id;
   if (!uid) return;
   const hoy = new Date().toISOString().split('T')[0];
   try {
