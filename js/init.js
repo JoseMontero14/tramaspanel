@@ -14,6 +14,10 @@ document.addEventListener('DOMContentLoaded', function () {
   const logoutBtn = document.getElementById('btn-logout');
   if (logoutBtn) logoutBtn.addEventListener('click', () => { if (confirm('¿Cerrar sesión?')) sbLogout(); });
 
+  // botón sincronizar
+  const btnSync = document.getElementById('btn-sincronizar');
+  if (btnSync) btnSync.addEventListener('click', sincronizarTodo);
+
   // arrancar panel
   var tryInit = function () {
     if (window.__csjbInit && document.getElementById('notas-list')) {
