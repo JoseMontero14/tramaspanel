@@ -259,3 +259,9 @@ async function sincronizarTodo() {
     mostrarToast(`${ok} OK · ${fail} fallaron — reintenta`, 'err');
   }
 }
+
+// exponer funciones globalmente
+window.sincronizarTodo     = sincronizarTodo;
+window.jefeCambiarTramador = jefeCambiarTramador;
+window.sbLogout            = sbLogout;
+window.mostrarToast        = mostrarToast;
